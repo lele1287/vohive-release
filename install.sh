@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-REPO="${VOHIVE_RELEASE_REPO:-iniwex5/vohive-release}"
+REPO="${VOHIVE_RELEASE_REPO:-lele1287/vohive-release}"
 CHANNEL="${VOHIVE_RELEASE_CHANNEL:-stable}"
 VERSION=""
 NO_SYSTEMD=0
@@ -321,7 +321,15 @@ main() {
 
   arch="$(detect_arch)"
   resolved_version="$(resolve_version "${VERSION}")"
-  asset="vohive_${resolved_version}_linux_${arch}"
+
+  # lele1287 仓库当前 Release 的二进制文件名与版本标签不完全一致：
+  # Release Tag: v1.5.5
+  # Asset: vohive_v1.5.5-10-gf9eb85d_linux_amd64
+  if [ "${REPO}" = "lele1287/vohive-release" ] && [ "${resolved_version}" = "v1.5.5" ] && [ "${arch}" = "amd64" ]; then
+    asset="vohive_v1.5.5-10-gf9eb85d_linux_amd64"
+  else
+    asset="vohive_${resolved_version}_linux_${arch}"
+  fi
   base="https://github.com/${REPO}/releases/download/${resolved_version}"
   downloaded="${TMP_DIR}/${asset}"
   extracted="${downloaded}"
