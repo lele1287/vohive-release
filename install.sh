@@ -90,6 +90,42 @@ download_to() {
   fi
 }
 
+# 下载文件并自动重试，避免网络波动导致安装失败
+download_with_retry() {
+  url="$1"
+  dest="$2"
+
+  max_retry=3
+  retry=1
+
+  while [ "${retry}" -le "${max_retry}" ]; do
+    log "正在下载 (${retry}/${max_retry}): ${url}"
+
+    rm -f "${dest}"
+
+    if download_to "${url}" "${dest}"; then
+      if [ -f "${dest}" ] && [ -s "${dest}" ]; then
+        chmod +x "${dest}"
+        if [ -x "${dest}" ]; then
+          log "下载成功: ${dest}"
+          return 0
+        fi
+      fi
+    fi
+
+    err "下载失败，第 ${retry} 次尝试失败"
+    retry=$((retry + 1))
+
+    if [ "${retry}" -le "${max_retry}" ]; then
+      log "5秒后进行第 ${retry} 次重试..."
+      sleep 5
+    fi
+  done
+
+  err "vohive ${resolved_version:-} 下载失败，已重试 ${max_retry} 次，安装终止。"
+  exit 1
+}
+
 fetch_text() {
   url="$1"
   tmp_file="${TMP_DIR}/fetch.txt"
@@ -337,11 +373,12 @@ main() {
   log "已解析版本: ${resolved_version}"
   log "正在下载二进制: ${base}/${asset}"
 
-  download_to "${base}/${asset}" "${downloaded}"
-  chmod +x "${downloaded}"
+  download_with_retry "${base}/${asset}" "${downloaded}"
 
-  if [ ! -f "${extracted}" ]; then
-    err "下载的二进制文件不存在"
+  extracted="${downloaded}"
+
+  if [ ! -f "${extracted}" ] || [ ! -s "${extracted}" ]; then
+    err "下载文件校验失败，安装终止。"
     exit 1
   fi
 
